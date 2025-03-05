@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = "time-tracker-pwa-v2";
+const CACHE_NAME = "time-tracker-pwa-v3";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
