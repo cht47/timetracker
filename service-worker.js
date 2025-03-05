@@ -6,7 +6,8 @@ const FILES_TO_CACHE = [
   "./style.css",
   "./manifest.json",
   "./service-worker.js",
-  // ggf. Icons wie ./icon-192.png, ./icon-512.png
+  "./icon-192.png", 
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", (evt) => {

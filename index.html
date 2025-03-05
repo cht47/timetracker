@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Time Tracker </title>
+  <title>Time Track</title>
   
   <!-- Viewport-Meta-Tag für Responsive Design -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -27,11 +27,11 @@
   <table id="entriesTable">
     <thead>
       <tr>
-        <th>Ticket/Task</th>
-        <th>Start</th>
-        <th>Stop</th>
-        <th>Dauer (min)</th>
-        <th>Aktion</th>
+        <th>Task</th>
+        <th>Start Time</th>
+        <th>Stop Time</th>
+        <th>Minutes</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody>
@@ -45,8 +45,9 @@
     let currentStartTime = null;
     let currentTask = "";
     
-    // localStorage-Key
+    // localStorage-Schlüssel für Zeiteinträge und Timer-Zustand
     const STORAGE_KEY = "timeEntries"; 
+    const TIMER_STATE_KEY = "timerState";
 
     // HTML-Elemente referenzieren
     const taskInput    = document.getElementById("taskInput");
@@ -59,6 +60,20 @@
     document.addEventListener("DOMContentLoaded", () => {
       loadEntries();
       renderTable();
+      
+      // Timer-Zustand laden (falls vorhanden)
+      const savedState = localStorage.getItem(TIMER_STATE_KEY);
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        if (state.running) {
+          running = true;
+          currentStartTime = state.startTime;
+          currentTask = state.task;
+          startStopBtn.textContent = "Stop";
+          taskInput.value = currentTask;
+          taskInput.disabled = true;
+        }
+      }
     });
 
     // ============= Event Listener =============
@@ -75,6 +90,8 @@
         currentTask = taskInput.value.trim();
         startStopBtn.textContent = "Stop";
         taskInput.disabled = true;
+        // Timer-Zustand speichern
+        saveTimerState();
       } else {
         // Stop
         running = false;
@@ -86,6 +103,8 @@
         startStopBtn.textContent = "Start";
         taskInput.disabled = false;
         taskInput.value = "";
+        // Timer-Zustand löschen
+        clearTimerState();
       }
     });
 
@@ -117,6 +136,23 @@
     // Speichert Einträge ins localStorage
     function saveEntries() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(window.timeEntries));
+    }
+
+    // Speichert den aktuellen Timer-Zustand in localStorage
+    function saveTimerState() {
+      if (running) {
+        const state = {
+          running: true,
+          startTime: currentStartTime,
+          task: currentTask
+        };
+        localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state));
+      }
+    }
+
+    // Löscht den gespeicherten Timer-Zustand
+    function clearTimerState() {
+      localStorage.removeItem(TIMER_STATE_KEY);
     }
 
     // Neuen Eintrag hinzufügen
