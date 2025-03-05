@@ -1,0 +1,102 @@
+/* style.css - Dark Theme + Responsive */
+
+/* --- Grundlegendes Layout + größere Standardschrift --- */
+body {
+    background-color: #121212;
+    color: #ffffff;
+    font-family: sans-serif;
+    margin: 1rem;
+    font-size: 18px;
+    line-height: 1.4;
+  }
+  
+  h2 {
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+  }
+  
+  /* --- Container für die oberen Controls (Input, Buttons) --- */
+  #controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  #taskInput {
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #444;
+    /* oben/unten 0.6rem, links/rechts 1rem */
+    padding: 0.6rem 1rem;
+    min-width: 180px;
+    font-size: 1rem;
+    box-sizing: border-box;  /* Sorgt für korrekte Berechnung inkl. Padding/Border */
+  }
+  
+  button {
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  
+  button:hover {
+    background-color: #444;
+  }
+  
+  /* --- Tabelle für Einträge --- */
+  table {
+    width: 100%;
+    max-width: 600px;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+  
+  th, td {
+    border: 1px solid #444;
+    padding: 0.6rem;
+    text-align: left;
+  }
+  
+  th {
+    background-color: #222;
+  }
+  
+  .delete-btn {
+    background: #f66;
+    border: none;
+    color: #fff;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  
+  .delete-btn:hover {
+    background-color: #e44;
+  }
+  
+  /* --- Responsive Anpassungen bei sehr schmalen Bildschirmen --- */
+  @media (max-width: 600px) {
+    #controls {
+      flex-direction: column;
+    }
+    
+    #taskInput,
+    #startStopBtn,
+    #exportBtn,
+    #clearAllBtn {
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+  
+    /* Tabelle notfalls scrollbar machen, 
+       falls sie breiter wird als der Bildschirm */
+    table {
+      overflow-x: auto;
+      display: block;
+    }
+  }
+  

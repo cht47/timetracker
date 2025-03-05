@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Time Tracker </title>
+  
+  <!-- Viewport-Meta-Tag für Responsive Design -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Dark Theme CSS -->
+  <link rel="stylesheet" href="style.css">
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#121212" />
+</head>
+<body>
+  <h2>Time Tracker</h2>
+  
+  <!-- Container für Eingabefeld und Buttons -->
+  <div id="controls">
+    <input type="text" id="taskInput" placeholder="Ticket/Task" />
+    <button id="startStopBtn">Start</button>
+    <button id="exportBtn">Export CSV</button>
+    <button id="clearAllBtn">Clear All</button>
+  </div>
+  
+  <table id="entriesTable">
+    <thead>
+      <tr>
+        <th>Ticket/Task</th>
+        <th>Start</th>
+        <th>Stop</th>
+        <th>Dauer (min)</th>
+        <th>Aktion</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Dynamische Einträge -->
+    </tbody>
+  </table>
+
+  <script>
+    // ============= Variablen =============
+    let running = false;
+    let currentStartTime = null;
+    let currentTask = "";
+    
+    // localStorage-Key
+    const STORAGE_KEY = "timeEntries"; 
+
+    // HTML-Elemente referenzieren
+    const taskInput    = document.getElementById("taskInput");
+    const startStopBtn = document.getElementById("startStopBtn");
+    const exportBtn    = document.getElementById("exportBtn");
+    const clearAllBtn  = document.getElementById("clearAllBtn");
+    const entriesTbody = document.querySelector("#entriesTable tbody");
+
+    // ============= Init =============
+    document.addEventListener("DOMContentLoaded", () => {
+      loadEntries();
+      renderTable();
+    });
+
+    // ============= Event Listener =============
+    // Start/Stop-Button
+    startStopBtn.addEventListener("click", () => {
+      if (!running) {
+        // Start
+        if (!taskInput.value.trim()) {
+          alert("Bitte Ticket/Task eingeben!");
+          return;
+        }
+        running = true;
+        currentStartTime = Date.now();
+        currentTask = taskInput.value.trim();
+        startStopBtn.textContent = "Stop";
+        taskInput.disabled = true;
+      } else {
+        // Stop
+        running = false;
+        const stopTime = Date.now();
+        const diffMs   = stopTime - currentStartTime;
+        const diffMin  = Math.floor(diffMs / 1000 / 60);  // in Minuten
+        addEntry(currentTask, currentStartTime, stopTime, diffMin);
+        
+        startStopBtn.textContent = "Start";
+        taskInput.disabled = false;
+        taskInput.value = "";
+      }
+    });
+
+    // Export-Button
+    exportBtn.addEventListener("click", () => {
+      exportCSV();
+    });
+
+    // Clear-All-Button (mit Bestätigung)
+    clearAllBtn.addEventListener("click", () => {
+      if (confirm("Wirklich alle Einträge löschen?")) {
+        window.timeEntries = [];
+        saveEntries();
+        renderTable();
+      }
+    });
+
+    // ============= Funktionen =============
+    // Lädt Einträge aus localStorage
+    function loadEntries() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        window.timeEntries = JSON.parse(stored);
+      } else {
+        window.timeEntries = [];
+      }
+    }
+
+    // Speichert Einträge ins localStorage
+    function saveEntries() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(window.timeEntries));
+    }
+
+    // Neuen Eintrag hinzufügen
+    function addEntry(task, startMs, stopMs, durationMin) {
+      const startStr = formatTime(startMs);
+      const stopStr  = formatTime(stopMs);
+      const entry = {
+        id: Date.now(), 
+        task, 
+        startStr, 
+        stopStr, 
+        durationMin
+      };
+      window.timeEntries.push(entry);
+      saveEntries();
+      renderTable();
+    }
+
+    // Tabelle neu zeichnen
+    function renderTable() {
+      entriesTbody.innerHTML = ""; // leeren
+      window.timeEntries.forEach(entry => {
+        const tr = document.createElement("tr");
+        
+        tr.innerHTML = `
+          <td>${entry.task}</td>
+          <td>${entry.startStr}</td>
+          <td>${entry.stopStr}</td>
+          <td>${entry.durationMin}</td>
+          <td><button class="delete-btn">Löschen</button></td>
+        `;
+        // Delete-Button
+        const delBtn = tr.querySelector(".delete-btn");
+        delBtn.addEventListener("click", () => {
+          deleteEntry(entry.id);
+        });
+        entriesTbody.appendChild(tr);
+      });
+    }
+
+    // Löscht einen Eintrag
+    function deleteEntry(id) {
+      window.timeEntries = window.timeEntries.filter(e => e.id !== id);
+      saveEntries();
+      renderTable();
+    }
+
+    // CSV exportieren
+    function exportCSV() {
+      if (!window.timeEntries.length) {
+        alert("Keine Einträge zum Exportieren vorhanden.");
+        return;
+      }
+      let csv = "Ticket/Task,Start,Stop,Duration(min)\n";
+      window.timeEntries.forEach(e => {
+        csv += `${e.task},${e.startStr},${e.stopStr},${e.durationMin}\n`;
+      });
+
+      // CSV-Datei als Blob erzeugen
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url  = URL.createObjectURL(blob);
+
+      // Download-Link erzeugen
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "time_entries.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Zeitformat (yyyy-MM-dd HH:mm:ss)
+    function formatTime(ms) {
+      const d = new Date(ms);
+      const year = d.getFullYear();
+      const mon  = String(d.getMonth() + 1).padStart(2, "0");
+      const day  = String(d.getDate()).padStart(2, "0");
+      const hh   = String(d.getHours()).padStart(2, "0");
+      const mm   = String(d.getMinutes()).padStart(2, "0");
+      const ss   = String(d.getSeconds()).padStart(2, "0");
+      return `${year}-${mon}-${day} ${hh}:${mm}:${ss}`;
+    }
+
+    // PWA-Service-Worker (optional, wenn offline gewünscht)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log('Service Worker registriert'))
+        .catch(err => console.warn('Service Worker Fehler:', err));
+    }
+  </script>
+</body>
+</html>
