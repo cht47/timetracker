@@ -1,67 +1,113 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <title>Time Track</title>
-  
-  <!-- Viewport-Meta-Tag für Responsive Design -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Dark Theme CSS -->
-  <link rel="stylesheet" href="style.css">
+  <!-- Pico CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css" />
+
   <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#121212" />
+
+  <style>
+    /* Mit Grid werden Input und Button untereinander angeordnet */
+    .controls {
+      display: grid;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    /* Überschreiben von pointer-events im Fall von aria-busy,
+       damit der Button weiterhin klickbar bleibt */
+    button[aria-busy="true"] {
+      pointer-events: auto !important;
+    }
+  </style>
 </head>
 <body>
-  <h2>Time Track</h2>
+  <main class="container">
+    <h1>Time Track</h1>
+    
+    <!-- Controls: Textfeld und Start/Stop Button -->
+    <section class="controls">
+      <input type="text" id="taskInput" placeholder="Task Description" />
+      <button id="startStopBtn">Start Task</button>
+      <button id="exportBtn" >Export Tasks to CSV</button>
+      <button id="clearAllBtn" class="secondary">Clear All Tasks</button>
+    </section>
+    
+    <!-- Tabelle -->
+    <table id="entriesTable" class="striped">
+      <thead>
+        <tr>
+          <th scope="col">Task</th>
+          <th scope="col">Start Time</th>
+          <th scope="col">Stop Time</th>
+          <th scope="col">Minutes</th>
+          <th scope="col">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Dynamische Einträge -->
+      </tbody>
+    </table>
+    
+    <!-- Modal: Kein Task eingegeben -->
+    <dialog id="noTaskModal">
+      <article>
+        <header>
+          <h3>Information</h3>
+        </header>
+        <p>Please write a task description in to the text field!</p>
+        <footer>
+          <button class="secondary" onclick="document.getElementById('noTaskModal').close()">OK</button>
+        </footer>
+      </article>
+    </dialog>
+    
+    <!-- Modal: "Clear All" -->
+    <dialog id="clearModal">
+      <article>
+        <header>
+          <h3>Confirmation</h3>
+        </header>
+        <p>Delete all entries?</p>
+        <footer>
+          <button class="secondary" id="clearNoBtn" onclick="document.getElementById('clearModal').close()">Cancel</button>
+          <button id="clearYesBtn">Yes</button>
+        </footer>
+      </article>
+    </dialog>
+  </main>
   
-  <!-- Container für Eingabefeld und Buttons -->
-  <div id="controls">
-    <input type="text" id="taskInput" placeholder="Task Description" />
-    <button id="startStopBtn">Start</button>
-    <button id="exportBtn">Export CSV</button>
-    <button id="clearAllBtn">Clear All</button>
-  </div>
-  
-  <table id="entriesTable">
-    <thead>
-      <tr>
-        <th>Task</th>
-        <th>Start Time</th>
-        <th>Stop Time</th>
-        <th>Minutes</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Dynamische Einträge -->
-    </tbody>
-  </table>
-
   <script>
-    // ============= Variablen =============
+    // ========== Variablen und Konstanten ==========
     let running = false;
     let currentStartTime = null;
     let currentTask = "";
     
-    // localStorage-Schlüssel für Zeiteinträge und Timer-Zustand
-    const STORAGE_KEY = "timeEntries"; 
+    const STORAGE_KEY = "timeEntries";
     const TIMER_STATE_KEY = "timerState";
-
-    // HTML-Elemente referenzieren
-    const taskInput    = document.getElementById("taskInput");
+    
+    const taskInput = document.getElementById("taskInput");
     const startStopBtn = document.getElementById("startStopBtn");
-    const exportBtn    = document.getElementById("exportBtn");
-    const clearAllBtn  = document.getElementById("clearAllBtn");
+    const exportBtn = document.getElementById("exportBtn");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    
+    const noTaskModal = document.getElementById("noTaskModal");
+    const clearModal = document.getElementById("clearModal");
+    const clearYesBtn = document.getElementById("clearYesBtn");
+    
     const entriesTbody = document.querySelector("#entriesTable tbody");
-
-    // ============= Init =============
+    
+    // ========== Beim Laden der Seite ==========
     document.addEventListener("DOMContentLoaded", () => {
       loadEntries();
       renderTable();
       
-      // Timer-Zustand laden (falls vorhanden)
+      // Gespeicherten Timer-Zustand laden
       const savedState = localStorage.getItem(TIMER_STATE_KEY);
       if (savedState) {
         const state = JSON.parse(savedState);
@@ -69,61 +115,78 @@
           running = true;
           currentStartTime = state.startTime;
           currentTask = state.task;
-          startStopBtn.textContent = "Stop";
           taskInput.value = currentTask;
           taskInput.disabled = true;
+    
+          // Button in laufendem Zustand: "Stop"
+          startStopBtn.textContent = "Stop";
+          startStopBtn.setAttribute("aria-busy", "true");
         }
       }
     });
-
-    // ============= Event Listener =============
-    // Start/Stop-Button
+    
+    // ========== Event Listener ==========
+    
+    // Start/Stop Button
     startStopBtn.addEventListener("click", () => {
       if (!running) {
-        // Start
+        // Timer starten
         if (!taskInput.value.trim()) {
-          alert("Bitte Ticket/Task eingeben!");
+          noTaskModal.showModal();
           return;
         }
         running = true;
         currentStartTime = Date.now();
         currentTask = taskInput.value.trim();
-        startStopBtn.textContent = "Stop";
         taskInput.disabled = true;
+    
+        // Button in laufendem Zustand: "Stop" mit Loading-Stil
+        startStopBtn.textContent = "Stop";
+        startStopBtn.setAttribute("aria-busy", "true");
+    
         // Timer-Zustand speichern
         saveTimerState();
       } else {
-        // Stop
+        // Timer stoppen
         running = false;
         const stopTime = Date.now();
-        const diffMs   = stopTime - currentStartTime;
-        const diffMin  = Math.floor(diffMs / 1000 / 60);  // in Minuten
+        const diffMs = stopTime - currentStartTime;
+        const diffMin = Math.floor(diffMs / 1000 / 60);
+    
+        // Eintrag hinzufügen
         addEntry(currentTask, currentStartTime, stopTime, diffMin);
-        
+    
+        // Button zurücksetzen
         startStopBtn.textContent = "Start";
+        startStopBtn.removeAttribute("aria-busy");
         taskInput.disabled = false;
         taskInput.value = "";
-        // Timer-Zustand löschen
+    
+        // Timer-Zustand entfernen
         clearTimerState();
       }
     });
-
-    // Export-Button
+    
+    // Export CSV
     exportBtn.addEventListener("click", () => {
       exportCSV();
     });
-
-    // Clear-All-Button (mit Bestätigung)
+    
+    // Clear All -> Modal öffnen
     clearAllBtn.addEventListener("click", () => {
-      if (confirm("Wirklich alle Einträge löschen?")) {
-        window.timeEntries = [];
-        saveEntries();
-        renderTable();
-      }
+      clearModal.showModal();
     });
-
-    // ============= Funktionen =============
-    // Lädt Einträge aus localStorage
+    
+    // Modal: Clear All bestätigen
+    clearYesBtn.addEventListener("click", () => {
+      window.timeEntries = [];
+      saveEntries();
+      renderTable();
+      clearModal.close();
+    });
+    
+    // ========== Funktionen ==========
+    
     function loadEntries() {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -132,59 +195,54 @@
         window.timeEntries = [];
       }
     }
-
-    // Speichert Einträge ins localStorage
+    
     function saveEntries() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(window.timeEntries));
     }
-
-    // Speichert den aktuellen Timer-Zustand in localStorage
+    
     function saveTimerState() {
       if (running) {
         const state = {
           running: true,
           startTime: currentStartTime,
-          task: currentTask
+          task: currentTask,
         };
         localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state));
       }
     }
-
-    // Löscht den gespeicherten Timer-Zustand
+    
     function clearTimerState() {
       localStorage.removeItem(TIMER_STATE_KEY);
     }
-
-    // Neuen Eintrag hinzufügen
+    
     function addEntry(task, startMs, stopMs, durationMin) {
       const startStr = formatTime(startMs);
-      const stopStr  = formatTime(stopMs);
+      const stopStr = formatTime(stopMs);
       const entry = {
-        id: Date.now(), 
-        task, 
-        startStr, 
-        stopStr, 
-        durationMin
+        id: Date.now(),
+        task,
+        startStr,
+        stopStr,
+        durationMin,
       };
       window.timeEntries.push(entry);
       saveEntries();
       renderTable();
     }
-
-    // Tabelle neu zeichnen
+    
     function renderTable() {
-      entriesTbody.innerHTML = ""; // leeren
-      window.timeEntries.forEach(entry => {
+      entriesTbody.innerHTML = "";
+      window.timeEntries.forEach((entry) => {
         const tr = document.createElement("tr");
-        
         tr.innerHTML = `
           <td>${entry.task}</td>
           <td>${entry.startStr}</td>
           <td>${entry.stopStr}</td>
           <td>${entry.durationMin}</td>
-          <td><button class="delete-btn">Löschen</button></td>
+          <td>
+            <button class="secondary delete-btn" data-id="${entry.id}">Delete</button>
+          </td>
         `;
-        // Delete-Button
         const delBtn = tr.querySelector(".delete-btn");
         delBtn.addEventListener("click", () => {
           deleteEntry(entry.id);
@@ -192,30 +250,25 @@
         entriesTbody.appendChild(tr);
       });
     }
-
-    // Löscht einen Eintrag
+    
     function deleteEntry(id) {
-      window.timeEntries = window.timeEntries.filter(e => e.id !== id);
+      window.timeEntries = window.timeEntries.filter((e) => e.id !== id);
       saveEntries();
       renderTable();
     }
-
-    // CSV exportieren
+    
     function exportCSV() {
       if (!window.timeEntries.length) {
-        alert("Keine Einträge zum Exportieren vorhanden.");
+        noTaskModal.querySelector("p").textContent = "There are no entries to export!";
+        noTaskModal.showModal();
         return;
       }
       let csv = "Ticket/Task,Start,Stop,Duration(min)\n";
-      window.timeEntries.forEach(e => {
+      window.timeEntries.forEach((e) => {
         csv += `${e.task},${e.startStr},${e.stopStr},${e.durationMin}\n`;
       });
-
-      // CSV-Datei als Blob erzeugen
       const blob = new Blob([csv], { type: "text/csv" });
-      const url  = URL.createObjectURL(blob);
-
-      // Download-Link erzeugen
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "time_entries.csv";
@@ -224,24 +277,24 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
-
-    // Zeitformat (yyyy-MM-dd HH:mm:ss)
+    
     function formatTime(ms) {
       const d = new Date(ms);
       const year = d.getFullYear();
-      const mon  = String(d.getMonth() + 1).padStart(2, "0");
-      const day  = String(d.getDate()).padStart(2, "0");
-      const hh   = String(d.getHours()).padStart(2, "0");
-      const mm   = String(d.getMinutes()).padStart(2, "0");
-      const ss   = String(d.getSeconds()).padStart(2, "0");
+      const mon = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      const ss = String(d.getSeconds()).padStart(2, "0");
       return `${year}-${mon}-${day} ${hh}:${mm}:${ss}`;
     }
-
-    // PWA-Service-Worker (optional, wenn offline gewünscht)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(() => console.log('Service Worker registriert'))
-        .catch(err => console.warn('Service Worker Fehler:', err));
+    
+    // PWA-Service-Worker
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("service-worker.js")
+        .then(() => console.log("Service Worker registriert"))
+        .catch((err) => console.warn("Service Worker Fehler:", err));
     }
   </script>
 </body>
