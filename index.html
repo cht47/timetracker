@@ -6,23 +6,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Pico CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css" />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css"
+  />
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#121212" />
 
   <style>
-    /* Mit Grid werden Input und Button untereinander angeordnet */
+    /* Mit Grid werden Input und Buttons untereinander angeordnet */
     .controls {
       display: grid;
       gap: 1rem;
       margin-bottom: 1rem;
     }
-    /* Überschreiben von pointer-events im Fall von aria-busy,
-       damit der Button weiterhin klickbar bleibt */
+    /* Damit der Button trotz aria-busy klickbar bleibt */
     button[aria-busy="true"] {
       pointer-events: auto !important;
+    }
+
+    /* Container für die Card-Darstellung */
+    #entriesContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* Jede Zeiterfassungs-Card */
+    .entry-card {
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      word-break: break-word; /* Lange Task-Namen umbrechen */
+    }
+
+    /* Start/Stop + Delete in einer Zeile nebeneinander */
+    .row {
+      display: flex;
+      justify-content: space-between; /* Inhalt links & Button rechts */
+      align-items: flex-start;        /* Falls du zentrieren willst -> center */
+      gap: 1rem;                      /* Etwas Abstand zwischen Start/Stop und Button */
     }
   </style>
 </head>
@@ -30,29 +55,18 @@
   <main class="container">
     <h1>Time Track</h1>
     
-    <!-- Controls: Textfeld und Start/Stop Button -->
+    <!-- Controls: Textfeld und Buttons -->
     <section class="controls">
       <input type="text" id="taskInput" placeholder="Task Description" />
       <button id="startStopBtn">Start Task</button>
-      <button id="exportBtn" >Export Tasks to CSV</button>
+      <button id="exportBtn">Export Tasks to CSV</button>
       <button id="clearAllBtn" class="secondary">Clear All Tasks</button>
     </section>
     
-    <!-- Tabelle -->
-    <table id="entriesTable" class="striped">
-      <thead>
-        <tr>
-          <th scope="col">Task</th>
-          <th scope="col">Start Time</th>
-          <th scope="col">Stop Time</th>
-          <th scope="col">Minutes</th>
-          <th scope="col">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Dynamische Einträge -->
-      </tbody>
-    </table>
+    <!-- Card-Container anstelle der Tabelle -->
+    <section id="entriesContainer">
+      <!-- Dynamische Cards erscheinen hier -->
+    </section>
     
     <!-- Modal: Kein Task eingegeben -->
     <dialog id="noTaskModal">
@@ -75,7 +89,9 @@
         </header>
         <p>Delete all entries?</p>
         <footer>
-          <button class="secondary" id="clearNoBtn" onclick="document.getElementById('clearModal').close()">Cancel</button>
+          <button class="secondary" id="clearNoBtn" onclick="document.getElementById('clearModal').close()">
+            Cancel
+          </button>
           <button id="clearYesBtn">Yes</button>
         </footer>
       </article>
@@ -100,12 +116,12 @@
     const clearModal = document.getElementById("clearModal");
     const clearYesBtn = document.getElementById("clearYesBtn");
     
-    const entriesTbody = document.querySelector("#entriesTable tbody");
+    const entriesContainer = document.getElementById("entriesContainer");
     
     // ========== Beim Laden der Seite ==========
     document.addEventListener("DOMContentLoaded", () => {
       loadEntries();
-      renderTable();
+      renderEntries();
       
       // Gespeicherten Timer-Zustand laden
       const savedState = localStorage.getItem(TIMER_STATE_KEY);
@@ -140,7 +156,7 @@
         currentTask = taskInput.value.trim();
         taskInput.disabled = true;
     
-        // Button in laufendem Zustand: "Stop" mit Loading-Stil
+        // Button in laufendem Zustand: "Stop"
         startStopBtn.textContent = "Stop";
         startStopBtn.setAttribute("aria-busy", "true");
     
@@ -157,7 +173,7 @@
         addEntry(currentTask, currentStartTime, stopTime, diffMin);
     
         // Button zurücksetzen
-        startStopBtn.textContent = "Start";
+        startStopBtn.textContent = "Start Task";
         startStopBtn.removeAttribute("aria-busy");
         taskInput.disabled = false;
         taskInput.value = "";
@@ -181,7 +197,7 @@
     clearYesBtn.addEventListener("click", () => {
       window.timeEntries = [];
       saveEntries();
-      renderTable();
+      renderEntries();
       clearModal.close();
     });
     
@@ -227,34 +243,38 @@
       };
       window.timeEntries.push(entry);
       saveEntries();
-      renderTable();
+      renderEntries();
     }
     
-    function renderTable() {
-      entriesTbody.innerHTML = "";
+    function renderEntries() {
+      entriesContainer.innerHTML = "";
       window.timeEntries.forEach((entry) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${entry.task}</td>
-          <td>${entry.startStr}</td>
-          <td>${entry.stopStr}</td>
-          <td>${entry.durationMin}</td>
-          <td>
-            <button class="secondary delete-btn" data-id="${entry.id}">Delete</button>
-          </td>
+        const article = document.createElement("article");
+        article.classList.add("entry-card");
+        article.innerHTML = `
+          <h3>${entry.task}</h3>
+          <div class="row">
+            <div>
+              <p><strong>Start:</strong> ${entry.startStr}</p>
+              <p><strong>Stop:</strong> ${entry.stopStr}</p>
+            </div>
+            <button class="secondary delete-btn" data-id="${entry.id}">
+              Delete
+            </button>
+          </div>
+          <p><strong>Minutes:</strong> ${entry.durationMin}</p>
         `;
-        const delBtn = tr.querySelector(".delete-btn");
-        delBtn.addEventListener("click", () => {
+        article.querySelector(".delete-btn").addEventListener("click", () => {
           deleteEntry(entry.id);
         });
-        entriesTbody.appendChild(tr);
+        entriesContainer.appendChild(article);
       });
     }
     
     function deleteEntry(id) {
       window.timeEntries = window.timeEntries.filter((e) => e.id !== id);
       saveEntries();
-      renderTable();
+      renderEntries();
     }
     
     function exportCSV() {
@@ -278,15 +298,15 @@
       URL.revokeObjectURL(url);
     }
     
+    // dd.mm.yy hh:mm
     function formatTime(ms) {
       const d = new Date(ms);
-      const year = d.getFullYear();
-      const mon = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      const hh = String(d.getHours()).padStart(2, "0");
-      const mm = String(d.getMinutes()).padStart(2, "0");
-      const ss = String(d.getSeconds()).padStart(2, "0");
-      return `${year}-${mon}-${day} ${hh}:${mm}:${ss}`;
+      const day   = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year  = String(d.getFullYear()).slice(-2);
+      const hh    = String(d.getHours()).padStart(2, "0");
+      const mm    = String(d.getMinutes()).padStart(2, "0");
+      return `${day}.${month}.${year} ${hh}:${mm}`;
     }
     
     // PWA-Service-Worker
