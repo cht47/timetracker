@@ -1,15 +1,13 @@
 <!DOCTYPE html>
 <html lang="de" data-theme="dark">
+
 <head>
   <meta charset="UTF-8" />
   <title>Time Track</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Pico CSS -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css"
-  />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css" />
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json" />
@@ -22,6 +20,7 @@
       gap: 1rem;
       margin-bottom: 1rem;
     }
+
     /* Damit der Button trotz aria-busy klickbar bleibt */
     button[aria-busy="true"] {
       pointer-events: auto !important;
@@ -39,22 +38,27 @@
       border: 1px solid var(--color-border);
       border-radius: 0.5rem;
       padding: 1rem;
-      word-break: break-word; /* Lange Task-Namen umbrechen */
+      word-break: break-word;
+      /* Lange Task-Namen umbrechen */
     }
 
     /* Start/Stop + Delete in einer Zeile nebeneinander */
     .row {
       display: flex;
-      justify-content: space-between; /* Inhalt links & Button rechts */
-      align-items: flex-start;        /* Falls du zentrieren willst -> center */
-      gap: 1rem;                      /* Etwas Abstand zwischen Start/Stop und Button */
+      justify-content: space-between;
+      /* Inhalt links & Button rechts */
+      align-items: flex-start;
+      /* Falls du zentrieren willst -> center */
+      gap: 1rem;
+      /* Etwas Abstand zwischen Start/Stop und Button */
     }
   </style>
 </head>
+
 <body>
   <main class="container">
     <h1>Time Track</h1>
-    
+
     <!-- Controls: Textfeld und Buttons -->
     <section class="controls">
       <input type="text" id="taskInput" placeholder="Task Description" />
@@ -62,12 +66,12 @@
       <button id="exportBtn">Export Tasks to CSV</button>
       <button id="clearAllBtn" class="secondary">Clear All Tasks</button>
     </section>
-    
+
     <!-- Card-Container anstelle der Tabelle -->
     <section id="entriesContainer">
       <!-- Dynamische Cards erscheinen hier -->
     </section>
-    
+
     <!-- Modal: Kein Task eingegeben -->
     <dialog id="noTaskModal">
       <article>
@@ -80,7 +84,7 @@
         </footer>
       </article>
     </dialog>
-    
+
     <!-- Modal: "Clear All" -->
     <dialog id="clearModal">
       <article>
@@ -97,32 +101,32 @@
       </article>
     </dialog>
   </main>
-  
+
   <script>
     // ========== Variablen und Konstanten ==========
     let running = false;
     let currentStartTime = null;
     let currentTask = "";
-    
+
     const STORAGE_KEY = "timeEntries";
     const TIMER_STATE_KEY = "timerState";
-    
+
     const taskInput = document.getElementById("taskInput");
     const startStopBtn = document.getElementById("startStopBtn");
     const exportBtn = document.getElementById("exportBtn");
     const clearAllBtn = document.getElementById("clearAllBtn");
-    
+
     const noTaskModal = document.getElementById("noTaskModal");
     const clearModal = document.getElementById("clearModal");
     const clearYesBtn = document.getElementById("clearYesBtn");
-    
+
     const entriesContainer = document.getElementById("entriesContainer");
-    
+
     // ========== Beim Laden der Seite ==========
     document.addEventListener("DOMContentLoaded", () => {
       loadEntries();
       renderEntries();
-      
+
       // Gespeicherten Timer-Zustand laden
       const savedState = localStorage.getItem(TIMER_STATE_KEY);
       if (savedState) {
@@ -133,16 +137,16 @@
           currentTask = state.task;
           taskInput.value = currentTask;
           taskInput.disabled = true;
-    
+
           // Button in laufendem Zustand: "Stop"
           startStopBtn.textContent = "Stop";
           startStopBtn.setAttribute("aria-busy", "true");
         }
       }
     });
-    
+
     // ========== Event Listener ==========
-    
+
     // Start/Stop Button
     startStopBtn.addEventListener("click", () => {
       if (!running) {
@@ -155,11 +159,11 @@
         currentStartTime = Date.now();
         currentTask = taskInput.value.trim();
         taskInput.disabled = true;
-    
+
         // Button in laufendem Zustand: "Stop"
         startStopBtn.textContent = "Stop";
         startStopBtn.setAttribute("aria-busy", "true");
-    
+
         // Timer-Zustand speichern
         saveTimerState();
       } else {
@@ -168,31 +172,31 @@
         const stopTime = Date.now();
         const diffMs = stopTime - currentStartTime;
         const diffMin = Math.floor(diffMs / 1000 / 60);
-    
+
         // Eintrag hinzufügen
         addEntry(currentTask, currentStartTime, stopTime, diffMin);
-    
+
         // Button zurücksetzen
         startStopBtn.textContent = "Start Task";
         startStopBtn.removeAttribute("aria-busy");
         taskInput.disabled = false;
         taskInput.value = "";
-    
+
         // Timer-Zustand entfernen
         clearTimerState();
       }
     });
-    
+
     // Export CSV
     exportBtn.addEventListener("click", () => {
       exportCSV();
     });
-    
+
     // Clear All -> Modal öffnen
     clearAllBtn.addEventListener("click", () => {
       clearModal.showModal();
     });
-    
+
     // Modal: Clear All bestätigen
     clearYesBtn.addEventListener("click", () => {
       window.timeEntries = [];
@@ -200,9 +204,9 @@
       renderEntries();
       clearModal.close();
     });
-    
+
     // ========== Funktionen ==========
-    
+
     function loadEntries() {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -211,11 +215,11 @@
         window.timeEntries = [];
       }
     }
-    
+
     function saveEntries() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(window.timeEntries));
     }
-    
+
     function saveTimerState() {
       if (running) {
         const state = {
@@ -226,11 +230,11 @@
         localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state));
       }
     }
-    
+
     function clearTimerState() {
       localStorage.removeItem(TIMER_STATE_KEY);
     }
-    
+
     function addEntry(task, startMs, stopMs, durationMin) {
       const startStr = formatTime(startMs);
       const stopStr = formatTime(stopMs);
@@ -239,16 +243,36 @@
         task,
         startStr,
         stopStr,
+        stopMs,
         durationMin,
       };
       window.timeEntries.push(entry);
       saveEntries();
       renderEntries();
     }
-    
+
     function renderEntries() {
       entriesContainer.innerHTML = "";
-      window.timeEntries.forEach((entry) => {
+      window.timeEntries.forEach((entry, index) => {
+        const isLast = index === window.timeEntries.length - 1;
+        let ruhezeitHtml = "";
+
+        if (isLast) {
+          let stopMs = entry.stopMs;
+          if (!stopMs && entry.stopStr) {
+            const [datePart, timePart] = entry.stopStr.split(" ");
+            const [day, month, yearShort] = datePart.split(".");
+            const [hh, mm] = timePart.split(":");
+            const year = "20" + yearShort;
+            stopMs = new Date(year, month - 1, day, hh, mm).getTime();
+          }
+          if (stopMs) {
+            const ruhezeitMs = stopMs + (11 * 60 * 60 * 1000);
+            const ruhezeitStr = formatTime(ruhezeitMs);
+            ruhezeitHtml = `<p><strong>Rest time until:</strong> ${ruhezeitStr}</p>`;
+          }
+        }
+
         const article = document.createElement("article");
         article.classList.add("entry-card");
         article.innerHTML = `
@@ -263,6 +287,7 @@
             </button>
           </div>
           <p><strong>Minutes:</strong> ${entry.durationMin}</p>
+          ${ruhezeitHtml}
         `;
         article.querySelector(".delete-btn").addEventListener("click", () => {
           deleteEntry(entry.id);
@@ -270,13 +295,13 @@
         entriesContainer.appendChild(article);
       });
     }
-    
+
     function deleteEntry(id) {
       window.timeEntries = window.timeEntries.filter((e) => e.id !== id);
       saveEntries();
       renderEntries();
     }
-    
+
     function exportCSV() {
       if (!window.timeEntries.length) {
         noTaskModal.querySelector("p").textContent = "There are no entries to export!";
@@ -297,18 +322,18 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
-    
+
     // dd.mm.yy hh:mm
     function formatTime(ms) {
       const d = new Date(ms);
-      const day   = String(d.getDate()).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
       const month = String(d.getMonth() + 1).padStart(2, "0");
-      const year  = String(d.getFullYear()).slice(-2);
-      const hh    = String(d.getHours()).padStart(2, "0");
-      const mm    = String(d.getMinutes()).padStart(2, "0");
+      const year = String(d.getFullYear()).slice(-2);
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
       return `${day}.${month}.${year} ${hh}:${mm}`;
     }
-    
+
     // PWA-Service-Worker
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
@@ -318,4 +343,5 @@
     }
   </script>
 </body>
+
 </html>
