@@ -170,8 +170,14 @@
         // Timer stoppen
         running = false;
         const stopTime = Date.now();
-        const diffMs = stopTime - currentStartTime;
-        const diffMin = Math.floor(diffMs / 1000 / 60);
+        
+        // Rundungsfehler vermeiden: Differenz anhand der vollen Minuten berechnen (ohne Sekunden)
+        const startDate = new Date(currentStartTime);
+        startDate.setSeconds(0, 0);
+        const stopDate = new Date(stopTime);
+        stopDate.setSeconds(0, 0);
+        
+        const diffMin = Math.round((stopDate.getTime() - startDate.getTime()) / 60000);
 
         // Eintrag hinzufügen
         addEntry(currentTask, currentStartTime, stopTime, diffMin);
